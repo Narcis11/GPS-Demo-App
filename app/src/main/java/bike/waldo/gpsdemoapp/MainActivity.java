@@ -31,6 +31,7 @@ public class MainActivity extends Activity implements
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
+		//Testing the Slack-Bitbucket integration.
         loadLog();
     }
 
