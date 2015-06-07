@@ -1,16 +1,27 @@
 package bike.waldo.gpsdemoapp;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Color;
 import android.location.Location;
-import android.location.LocationListener;
+import com.google.android.gms.location.LocationListener;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 
 public class MainActivity extends Activity implements
@@ -19,20 +30,25 @@ public class MainActivity extends Activity implements
         LocationListener {
     ScrollView mScrollView;
     LinearLayout mLogLinearLayout;
+    private GoogleApiClient mGoogleApiClient;
+    private LocationRequest mLocationRequest;
     private static String mUserLocation = "";
     private static final int TEXT_SIZE_SP = 14;
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
+    private static final long GPS_REFRESH = 2000;
+    Context mContext;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mScrollView = (ScrollView) findViewById(R.id.scrollview_log);
+        mLogLinearLayout = (LinearLayout) mScrollView.findViewById(R.id.linearlayout_log);
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
 		//Testing the Slack-Bitbucket integration.
-        loadLog();
     }
 
     @Override
@@ -40,6 +56,18 @@ public class MainActivity extends Activity implements
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mGoogleApiClient.disconnect();
     }
 
     @Override
@@ -56,33 +84,40 @@ public class MainActivity extends Activity implements
 
         return super.onOptionsItemSelected(item);
     }
-    private void loadLog() {
-         mScrollView = (ScrollView) findViewById(R.id.scrollview_log);
-         mLogLinearLayout = (LinearLayout) mScrollView.findViewById(R.id.linearlayout_log);
+    private void loadLog(String valueToDisplay) {
         TextView logTextView = new TextView(getApplicationContext());
-        logTextView.setText(mUserLocation);
+        logTextView.setText(valueToDisplay);
         logTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP);//the text size is automatically scaled to fit the screen's dimensions
         logTextView.setTextColor(Color.BLACK);
+        mLogLinearLayout.addView(logTextView);
+    }
+
+    @Override
+    public void onConnected(Bundle bundle) {
+        mLocationRequest = LocationRequest.create();
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setInterval(GPS_REFRESH); // Update the location every 5 seconds
+        LocationServices.FusedLocationApi.requestLocationUpdates(
+                mGoogleApiClient, mLocationRequest, this);
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
 
     }
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.i(LOG_TAG, "Lat/lng: " + location.getLatitude() + "/" + location.getLongitude());
+        DateFormat df = new SimpleDateFormat("HH:mm:ss");
+        Date dateobj = new Date();
+        mUserLocation = String.valueOf(location.getLatitude() + "/" + location.getLongitude());
+        loadLog(mUserLocation + "|" + df.format(dateobj));
 
     }
 
     @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
+    public void onConnectionFailed(ConnectionResult connectionResult) {
 
     }
 }
